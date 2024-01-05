@@ -1,5 +1,6 @@
 #[derive(Debug)]
 pub enum AddressingMode {
+    Accumulator,
     Implicit,
     Immediate,
     ZeroPage,
@@ -10,5 +11,4 @@ pub enum AddressingMode {
     AbsoluteY,
     IndirectX,
     IndirectY,
-    NoneAddressing,
 }

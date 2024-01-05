@@ -4,7 +4,7 @@ use instruction::Instruction;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-const INSTRUCTION_SET_SIZE: usize = 15;
+const INSTRUCTION_SET_SIZE: usize = 20;
 
 lazy_static! {
     pub static ref INSTRUCTION_SET: [Instruction; INSTRUCTION_SET_SIZE] = [
@@ -17,6 +17,13 @@ lazy_static! {
         Instruction::new(0x39, "AND", AddressingMode::AbsoluteY, 3),
         Instruction::new(0x21, "AND", AddressingMode::IndirectX, 2),
         Instruction::new(0x31, "AND", AddressingMode::IndirectY, 2),
+
+        // ASL
+        Instruction::new(0x0A, "ASL", AddressingMode::Accumulator, 1),
+        Instruction::new(0x06, "ASL", AddressingMode::ZeroPage, 2),
+        Instruction::new(0x16, "ASL", AddressingMode::ZeroPageX, 2),
+        Instruction::new(0x0E, "ASL", AddressingMode::Absolute, 3),
+        Instruction::new(0x1E, "ASL", AddressingMode::AbsoluteX, 3),
 
         // BRK
         Instruction::new(0x00, "BRK", AddressingMode::Implicit, 1),

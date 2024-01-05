@@ -1,5 +1,6 @@
 mod instruction_set;
 mod status_flag;
+use crate::util;
 use instruction_set::instruction::addressing_mode::AddressingMode;
 use instruction_set::INSTRUCTION_MAP;
 use status_flag::StatusFlag;
@@ -74,6 +75,11 @@ impl CPU {
         self.status &= !(flag as u8);
     }
 
+    fn is_flag_set(&mut self, flag: StatusFlag) -> bool {
+        let flag = flag as u8;
+        self.status & flag != 0
+    }
+
     fn update_zero_and_negative_flags(&mut self, result: u8) {
         if result == 0 {
             self.set_status_bit(StatusFlag::Zero)
@@ -85,6 +91,14 @@ impl CPU {
             self.set_status_bit(StatusFlag::Negative)
         } else {
             self.unset_status_bit(StatusFlag::Negative)
+        }
+    }
+
+    fn update_carry_flag(&mut self, should_set: bool) {
+        if should_set {
+            self.set_status_bit(StatusFlag::Carry)
+        } else {
+            self.unset_status_bit(StatusFlag::Carry)
         }
     }
 
@@ -139,15 +153,20 @@ impl CPU {
                 deref
             }
 
-            AddressingMode::Implicit | AddressingMode::NoneAddressing => {
+            AddressingMode::Implicit | AddressingMode::Accumulator => {
                 panic!("mode {:?} is not supported", mode);
             }
         }
     }
 
     fn get_operand_value(&mut self, mode: &AddressingMode) -> u8 {
-        let addr = self.get_operand_address(mode);
-        self.mem_read(addr)
+        match mode {
+            AddressingMode::Accumulator => self.register_a,
+            _ => {
+                let addr = self.get_operand_address(mode);
+                self.mem_read(addr)
+            }
+        }
     }
 
     fn and(&mut self, mode: &AddressingMode) {
@@ -155,6 +174,24 @@ impl CPU {
 
         self.register_a = self.register_a & operand;
         self.update_zero_and_negative_flags(self.register_a);
+    }
+
+    fn asl(&mut self, mode: &AddressingMode) {
+        let operand = self.get_operand_value(mode);
+        let result = operand << 1;
+
+        self.update_carry_flag(util::get_bit_at(&operand, 7));
+        self.update_zero_and_negative_flags(result);
+
+        match mode {
+            AddressingMode::Accumulator => {
+                self.register_a = result;
+            }
+            _ => {
+                let address = self.get_operand_address(mode);
+                self.mem_write(address, result)
+            }
+        }
     }
 
     fn inx(&mut self) {
@@ -204,6 +241,9 @@ impl CPU {
                 0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => {
                     self.and(&instruction.mode)
                 }
+
+                // ASL
+                0x0A | 0x06 | 0x16 | 0x0E | 0x1E => self.asl(&instruction.mode),
 
                 // LDA
                 0xA9 => self.lda(&instruction.mode),
@@ -419,6 +459,42 @@ mod test {
         cpu.load_and_run(vec![0xa9, 0b0000_1111, 0xa0, 4, 0x31, 0x10, 0x00]);
         assert_eq!(cpu.register_a, 2);
     }
+
+    // ASL
+    #[test]
+    fn test_0x0a_asl() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 2, 0x0a, 0x0a, 0x00]);
+        assert_eq!(cpu.register_a, 8);
+        assert_eq!(cpu.status & (StatusFlag::Zero as u8), 0);
+        assert_eq!(cpu.status & (StatusFlag::Negative as u8), 0);
+        assert_eq!(cpu.status & (StatusFlag::Carry as u8), 0);
+    }
+
+    #[test]
+    fn test_0x0a_asl_overflow() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0xFF, 0x0a, 0x00]);
+        assert_eq!(cpu.register_a, 0b1111_1110);
+        assert!(!cpu.is_flag_set(StatusFlag::Zero));
+        assert!(cpu.is_flag_set(StatusFlag::Negative));
+        assert!(cpu.is_flag_set(StatusFlag::Carry));
+    }
+
+    #[test]
+    fn test_0x0e_asl() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x1234, 0b0111_0011);
+        cpu.load_and_run(vec![0x0e, 0x34, 0x12, 0x00]);
+
+        let result = cpu.mem_read(0x1234);
+        assert_eq!(result, 0b1110_0110);
+        assert!(cpu.is_flag_set(StatusFlag::Negative));
+        assert!(!cpu.is_flag_set(StatusFlag::Carry));
+        assert!(!cpu.is_flag_set(StatusFlag::Zero));
+    }
+
+    // Other ASL: 0x06, 0x16, 0x1E
 
     // LDX
     #[test]
