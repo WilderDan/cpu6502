@@ -4,11 +4,11 @@ use instruction::Instruction;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-const INSTRUCTION_SET_SIZE: usize = 20;
+const INSTRUCTION_SET_SIZE: usize = 21;
 
 lazy_static! {
     pub static ref INSTRUCTION_SET: [Instruction; INSTRUCTION_SET_SIZE] = [
-        // AND
+        // AND - Logical AND
         Instruction::new(0x29, "AND", AddressingMode::Immediate, 2),
         Instruction::new(0x25, "AND", AddressingMode::ZeroPage, 2),
         Instruction::new(0x35, "AND", AddressingMode::ZeroPageX, 2),
@@ -18,32 +18,35 @@ lazy_static! {
         Instruction::new(0x21, "AND", AddressingMode::IndirectX, 2),
         Instruction::new(0x31, "AND", AddressingMode::IndirectY, 2),
 
-        // ASL
+        // ASL - Arithmetic Shift Left
         Instruction::new(0x0A, "ASL", AddressingMode::Accumulator, 1),
         Instruction::new(0x06, "ASL", AddressingMode::ZeroPage, 2),
         Instruction::new(0x16, "ASL", AddressingMode::ZeroPageX, 2),
         Instruction::new(0x0E, "ASL", AddressingMode::Absolute, 3),
         Instruction::new(0x1E, "ASL", AddressingMode::AbsoluteX, 3),
 
-        // BRK
+        // BCC - Branch if Carry Clear
+        Instruction::new(0x90, "BCC", AddressingMode::Relative, 2),
+
+        // BRK - (Break) Force Interrupt
         Instruction::new(0x00, "BRK", AddressingMode::Implicit, 1),
 
-        // INX
+        // INX - Increment X Register
         Instruction::new(0xE8, "INX", AddressingMode::Implicit, 1),
 
-        // LDA
+        // LDA - Load Accumulator
         Instruction::new(0xA9, "LDA", AddressingMode::Immediate, 2),
 
-        // LDX
+        // LDX - Load X Register
         Instruction::new(0xA2, "LDX", AddressingMode::Immediate, 2),
 
-        // LDY
+        // LDY - Load Y Register
         Instruction::new(0xA0, "LDY", AddressingMode::Immediate, 2),
 
-        // TAX
+        // TAX - Transfer Accumulator to X Register
         Instruction::new(0xAA, "TAX", AddressingMode::Implicit, 1),
 
-        // STA
+        // STA - Store Accumulator
         Instruction::new(0x85, "STA", AddressingMode::ZeroPage, 2),
     ];
 

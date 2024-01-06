@@ -104,7 +104,7 @@ impl CPU {
 
     fn get_operand_address(&mut self, mode: &AddressingMode) -> u16 {
         match mode {
-            AddressingMode::Immediate => self.program_counter,
+            AddressingMode::Immediate | AddressingMode::Relative => self.program_counter,
 
             AddressingMode::ZeroPage => self.mem_read(self.program_counter) as u16,
 
@@ -180,7 +180,7 @@ impl CPU {
         let operand = self.get_operand_value(mode);
         let result = operand << 1;
 
-        self.update_carry_flag(util::get_bit_at(&operand, 7));
+        self.update_carry_flag(util::get_bit_at(operand, 7));
         self.update_zero_and_negative_flags(result);
 
         match mode {
@@ -191,6 +191,14 @@ impl CPU {
                 let address = self.get_operand_address(mode);
                 self.mem_write(address, result)
             }
+        }
+    }
+
+    fn bcc(&mut self) {
+        if !self.is_flag_set(StatusFlag::Carry) {
+            // bcc only has relative addressing mode
+            let operand = self.get_operand_value(&AddressingMode::Relative);
+            self.program_counter = util::get_address_from_offset(self.program_counter, operand);
         }
     }
 
@@ -230,6 +238,9 @@ impl CPU {
             let opcode = self.mem_read(self.program_counter);
             self.program_counter += 1;
 
+            // Used to check if an instruction changes the program counter. See end of loop.
+            let program_counter_state = self.program_counter;
+
             // Decode
             let instruction = INSTRUCTION_MAP
                 .get(&opcode)
@@ -244,6 +255,9 @@ impl CPU {
 
                 // ASL
                 0x0A | 0x06 | 0x16 | 0x0E | 0x1E => self.asl(&instruction.mode),
+
+                // BCC
+                0x90 => self.bcc(),
 
                 // LDA
                 0xA9 => self.lda(&instruction.mode),
@@ -265,7 +279,11 @@ impl CPU {
                 _ => todo!(),
             }
 
-            self.program_counter += (instruction.length - 1) as u16;
+            // Some instructions modify the program counter. Do NOT increment the program
+            // counter after executing those instructions.
+            if self.program_counter == program_counter_state {
+                self.program_counter += (instruction.length - 1) as u16;
+            }
         }
     }
 }
@@ -493,8 +511,22 @@ mod test {
         assert!(!cpu.is_flag_set(StatusFlag::Carry));
         assert!(!cpu.is_flag_set(StatusFlag::Zero));
     }
-
     // Other ASL: 0x06, 0x16, 0x1E
+
+    // BCC
+    #[test]
+    fn test_0x90_bcc() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0x90, 3, 0xa9, 123, 0x00]);
+        assert_eq!(cpu.register_a, 0);
+    }
+
+    #[test]
+    fn test_0x90_bcc_no_branch() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0xFF, 0x0a, 0x90, 3, 0xa9, 123, 0x00]);
+        assert_eq!(cpu.register_a, 123);
+    }
 
     // LDX
     #[test]
