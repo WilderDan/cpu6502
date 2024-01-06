@@ -169,6 +169,11 @@ impl CPU {
         }
     }
 
+    fn branch(&mut self, mode: &AddressingMode) {
+        let operand = self.get_operand_value(mode);
+        self.program_counter = util::get_address_from_offset(self.program_counter, operand);
+    }
+
     fn and(&mut self, mode: &AddressingMode) {
         let operand = self.get_operand_value(mode);
 
@@ -196,17 +201,19 @@ impl CPU {
 
     fn bcc(&mut self) {
         if !self.is_flag_set(StatusFlag::Carry) {
-            // bcc only has relative addressing mode
-            let operand = self.get_operand_value(&AddressingMode::Relative);
-            self.program_counter = util::get_address_from_offset(self.program_counter, operand);
+            self.branch(&AddressingMode::Relative);
         }
     }
 
     fn bcs(&mut self) {
         if self.is_flag_set(StatusFlag::Carry) {
-            // bcs only has relative addressing mode
-            let operand = self.get_operand_value(&AddressingMode::Relative);
-            self.program_counter = util::get_address_from_offset(self.program_counter, operand);
+            self.branch(&AddressingMode::Relative);
+        }
+    }
+
+    fn beq(&mut self) {
+        if self.is_flag_set(StatusFlag::Zero) {
+            self.branch(&AddressingMode::Relative);
         }
     }
 
@@ -269,6 +276,9 @@ impl CPU {
 
                 // BCS
                 0xB0 => self.bcs(),
+
+                // BEQ
+                0xF0 => self.beq(),
 
                 // LDA
                 0xA9 => self.lda(&instruction.mode),
@@ -552,6 +562,15 @@ mod test {
         let mut cpu = CPU::new();
         cpu.load_and_run(vec![0xb0, 3, 0xa9, 123, 0x00]);
         assert_eq!(cpu.register_a, 123);
+    }
+
+    // BEQ
+    #[test]
+    fn test_0xf0_beq() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 0, 0xf0, 3, 0xa9, 0xff, 0xa2, 0x15, 0x00]);
+        assert_eq!(cpu.register_a, 0);
+        assert_eq!(cpu.register_x, 0x15);
     }
 
     // LDX

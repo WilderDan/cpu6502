@@ -4,7 +4,7 @@ use instruction::Instruction;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-const INSTRUCTION_SET_SIZE: usize = 22;
+const INSTRUCTION_SET_SIZE: usize = 23;
 
 lazy_static! {
     pub static ref INSTRUCTION_SET: [Instruction; INSTRUCTION_SET_SIZE] = [
@@ -30,6 +30,9 @@ lazy_static! {
 
         // BCS - Branch if Carry Set
         Instruction::new(0xB0, "BCS", AddressingMode::Relative, 2),
+
+        // BEQ - Branch if Equal
+        Instruction::new(0xF0, "BEQ", AddressingMode::Relative, 2),
 
         // BRK - (Break) Force Interrupt
         Instruction::new(0x00, "BRK", AddressingMode::Implicit, 1),
