@@ -10,8 +10,8 @@ pub fn get_address_from_offset(addr: u16, offset: u8) -> u16 {
     let value = offset & 0b0111_1111;
 
     if get_bit_at(offset, 7) {
-        addr - value as u16
+        addr.wrapping_sub(value as u16)
     } else {
-        addr + value as u16
+        addr.wrapping_add(value as u16)
     }
 }
