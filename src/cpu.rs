@@ -80,12 +80,16 @@ impl CPU {
         self.status & flag != 0
     }
 
-    fn update_zero_and_negative_flags(&mut self, result: u8) {
+    fn update_zero_flag(&mut self, result: u8) {
         if result == 0 {
             self.set_status_bit(StatusFlag::Zero)
         } else {
             self.unset_status_bit(StatusFlag::Zero)
         }
+    }
+
+    fn update_zero_and_negative_flags(&mut self, result: u8) {
+        self.update_zero_flag(result);
 
         if result & 0b1000_0000 != 0 {
             self.set_status_bit(StatusFlag::Negative)
@@ -99,6 +103,14 @@ impl CPU {
             self.set_status_bit(StatusFlag::Carry)
         } else {
             self.unset_status_bit(StatusFlag::Carry)
+        }
+    }
+
+    fn update_flag(&mut self, flag: StatusFlag, should_set: bool) {
+        if should_set {
+            self.set_status_bit(flag)
+        } else {
+            self.unset_status_bit(flag)
         }
     }
 
@@ -217,6 +229,21 @@ impl CPU {
         }
     }
 
+    fn bit(&mut self, mode: &AddressingMode) {
+        // A & M, N = M7, V = M6
+
+        // This instructions is used to test if one or more bits are set in a target memory location.
+        // The mask pattern in A is ANDed with the value in memory to set or clear the zero flag, but the result
+        // is not kept. Bits 7 and 6 of the value from memory are copied into the N and V flags.
+
+        let operand = self.get_operand_value(mode);
+        let result = self.register_a & operand;
+
+        self.update_zero_flag(result);
+        self.update_flag(StatusFlag::Overflow, util::get_bit_at(operand, 6));
+        self.update_flag(StatusFlag::Negative, util::get_bit_at(operand, 7));
+    }
+
     fn inx(&mut self) {
         self.register_x = self.register_x.wrapping_add(1);
         self.update_zero_and_negative_flags(self.register_x);
@@ -279,6 +306,9 @@ impl CPU {
 
                 // BEQ
                 0xF0 => self.beq(),
+
+                // BIT
+                0x24 | 0x2C => self.bit(&instruction.mode),
 
                 // LDA
                 0xA9 => self.lda(&instruction.mode),
@@ -571,6 +601,47 @@ mod test {
         cpu.load_and_run(vec![0xa9, 0, 0xf0, 3, 0xa9, 0xff, 0xa2, 0x15, 0x00]);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.register_x, 0x15);
+    }
+
+    // BIT
+    #[test]
+    fn test_0x2c_bit() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x1234, 0xff);
+        cpu.load_and_run(vec![0xa9, 1, 0x2c, 0x34, 0x12]);
+        assert!(!cpu.is_flag_set(StatusFlag::Zero));
+        assert!(cpu.is_flag_set(StatusFlag::Negative));
+        assert!(cpu.is_flag_set(StatusFlag::Overflow));
+    }
+
+    #[test]
+    fn test_0x2c_bit_2() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x1234, 0xff);
+        cpu.load_and_run(vec![0x2c, 0x34, 0x12]);
+        assert!(cpu.is_flag_set(StatusFlag::Zero));
+        assert!(cpu.is_flag_set(StatusFlag::Negative));
+        assert!(cpu.is_flag_set(StatusFlag::Overflow));
+    }
+
+    #[test]
+    fn test_0x2c_bit_3() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x1234, 0b_0011_1111);
+        cpu.load_and_run(vec![0xa9, 1, 0x2c, 0x34, 0x12]);
+        assert!(!cpu.is_flag_set(StatusFlag::Zero));
+        assert!(!cpu.is_flag_set(StatusFlag::Negative));
+        assert!(!cpu.is_flag_set(StatusFlag::Overflow));
+    }
+
+    #[test]
+    fn test_0x2c_bit_4() {
+        let mut cpu = CPU::new();
+        cpu.mem_write(0x1234, 0b_0111_1111);
+        cpu.load_and_run(vec![0xa9, 1, 0x2c, 0x34, 0x12]);
+        assert!(!cpu.is_flag_set(StatusFlag::Zero));
+        assert!(!cpu.is_flag_set(StatusFlag::Negative));
+        assert!(cpu.is_flag_set(StatusFlag::Overflow));
     }
 
     // LDX

@@ -4,7 +4,7 @@ use instruction::Instruction;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-const INSTRUCTION_SET_SIZE: usize = 23;
+const INSTRUCTION_SET_SIZE: usize = 25;
 
 lazy_static! {
     pub static ref INSTRUCTION_SET: [Instruction; INSTRUCTION_SET_SIZE] = [
@@ -36,6 +36,11 @@ lazy_static! {
 
         // BRK - (Break) Force Interrupt
         Instruction::new(0x00, "BRK", AddressingMode::Implicit, 1),
+
+        // BIT - Bit Test
+        Instruction::new(0x24, "BIT", AddressingMode::ZeroPage, 2),
+        Instruction::new(0x2C, "BIT", AddressingMode::Absolute, 3),
+
 
         // INX - Increment X Register
         Instruction::new(0xE8, "INX", AddressingMode::Implicit, 1),
