@@ -80,30 +80,9 @@ impl CPU {
         self.status & flag != 0
     }
 
-    fn update_zero_flag(&mut self, result: u8) {
-        if result == 0 {
-            self.set_status_bit(StatusFlag::Zero)
-        } else {
-            self.unset_status_bit(StatusFlag::Zero)
-        }
-    }
-
     fn update_zero_and_negative_flags(&mut self, result: u8) {
-        self.update_zero_flag(result);
-
-        if result & 0b1000_0000 != 0 {
-            self.set_status_bit(StatusFlag::Negative)
-        } else {
-            self.unset_status_bit(StatusFlag::Negative)
-        }
-    }
-
-    fn update_carry_flag(&mut self, should_set: bool) {
-        if should_set {
-            self.set_status_bit(StatusFlag::Carry)
-        } else {
-            self.unset_status_bit(StatusFlag::Carry)
-        }
+        self.update_flag(StatusFlag::Zero, result == 0);
+        self.update_flag(StatusFlag::Negative, result & 0b1000_0000 != 0);
     }
 
     fn update_flag(&mut self, flag: StatusFlag, should_set: bool) {
@@ -197,7 +176,7 @@ impl CPU {
         let operand = self.get_operand_value(mode);
         let result = operand << 1;
 
-        self.update_carry_flag(util::get_bit_at(operand, 7));
+        self.update_flag(StatusFlag::Carry, util::get_bit_at(operand, 7));
         self.update_zero_and_negative_flags(result);
 
         match mode {
@@ -239,7 +218,7 @@ impl CPU {
         let operand = self.get_operand_value(mode);
         let result = self.register_a & operand;
 
-        self.update_zero_flag(result);
+        self.update_flag(StatusFlag::Zero, result == 0);
         self.update_flag(StatusFlag::Overflow, util::get_bit_at(operand, 6));
         self.update_flag(StatusFlag::Negative, util::get_bit_at(operand, 7));
     }
