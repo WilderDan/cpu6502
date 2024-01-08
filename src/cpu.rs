@@ -162,6 +162,7 @@ impl CPU {
 
     fn branch(&mut self, mode: &AddressingMode) {
         let operand = self.get_operand_value(mode);
+        self.program_counter += 1;
         self.program_counter = util::get_address_from_offset(self.program_counter, operand);
     }
 
@@ -209,18 +210,18 @@ impl CPU {
     }
 
     fn bit(&mut self, mode: &AddressingMode) {
-        // A & M, N = M7, V = M6
-
-        // This instructions is used to test if one or more bits are set in a target memory location.
-        // The mask pattern in A is ANDed with the value in memory to set or clear the zero flag, but the result
-        // is not kept. Bits 7 and 6 of the value from memory are copied into the N and V flags.
-
         let operand = self.get_operand_value(mode);
         let result = self.register_a & operand;
 
         self.update_flag(StatusFlag::Zero, result == 0);
         self.update_flag(StatusFlag::Overflow, util::get_bit_at(operand, 6));
         self.update_flag(StatusFlag::Negative, util::get_bit_at(operand, 7));
+    }
+
+    fn bmi(&mut self) {
+        if self.is_flag_set(StatusFlag::Negative) {
+            self.branch(&AddressingMode::Relative);
+        }
     }
 
     fn inx(&mut self) {
@@ -288,6 +289,8 @@ impl CPU {
 
                 // BIT
                 0x24 | 0x2C => self.bit(&instruction.mode),
+
+                0x30 => self.bmi(),
 
                 // LDA
                 0xA9 => self.lda(&instruction.mode),
@@ -562,7 +565,7 @@ mod test {
     #[test]
     fn test_0xb0_bcs() {
         let mut cpu = CPU::new();
-        cpu.load_and_run(vec![0xa9, 0xFF, 0x0a, 0xb0, 3, 0xa9, 123, 0x00]);
+        cpu.load_and_run(vec![0xa9, 0xFF, 0x0a, 0xb0, 2, 0xa9, 123, 0x00]);
         assert_eq!(cpu.register_a, 0xFF << 1);
     }
 
@@ -577,7 +580,7 @@ mod test {
     #[test]
     fn test_0xf0_beq() {
         let mut cpu = CPU::new();
-        cpu.load_and_run(vec![0xa9, 0, 0xf0, 3, 0xa9, 0xff, 0xa2, 0x15, 0x00]);
+        cpu.load_and_run(vec![0xa9, 0, 0xf0, 3, 0xa9, 0xff, 69, 0xa2, 0x15, 0x00]);
         assert_eq!(cpu.register_a, 0);
         assert_eq!(cpu.register_x, 0x15);
     }
@@ -621,6 +624,14 @@ mod test {
         assert!(!cpu.is_flag_set(StatusFlag::Zero));
         assert!(!cpu.is_flag_set(StatusFlag::Negative));
         assert!(cpu.is_flag_set(StatusFlag::Overflow));
+    }
+    // Other BIT: 0x24
+
+    #[test]
+    fn test_0x30_bmi() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa2, 0xff, 0x30, 3, 0xa2, 69, 0x00]);
+        assert_eq!(cpu.register_x, 0xff);
     }
 
     // LDX
