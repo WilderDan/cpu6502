@@ -224,6 +224,12 @@ impl CPU {
         }
     }
 
+    fn bne(&mut self) {
+        if !self.is_flag_set(StatusFlag::Zero) {
+            self.branch(&AddressingMode::Relative);
+        }
+    }
+
     fn inx(&mut self) {
         self.register_x = self.register_x.wrapping_add(1);
         self.update_zero_and_negative_flags(self.register_x);
@@ -290,7 +296,11 @@ impl CPU {
                 // BIT
                 0x24 | 0x2C => self.bit(&instruction.mode),
 
+                // BMI
                 0x30 => self.bmi(),
+
+                // BNE
+                0xD0 => self.bne(),
 
                 // LDA
                 0xA9 => self.lda(&instruction.mode),
@@ -401,7 +411,7 @@ mod test {
         cpu.load_and_run(vec![0x02, 0x00]);
     }
 
-    // AND
+    // AND + Addressing Modes
 
     // Immediate
     #[test]
@@ -511,7 +521,6 @@ mod test {
         assert_eq!(cpu.register_a, 2);
     }
 
-    // ASL
     #[test]
     fn test_0x0a_asl() {
         let mut cpu = CPU::new();
@@ -546,7 +555,6 @@ mod test {
     }
     // Other ASL: 0x06, 0x16, 0x1E
 
-    // BCC
     #[test]
     fn test_0x90_bcc() {
         let mut cpu = CPU::new();
@@ -561,7 +569,6 @@ mod test {
         assert_eq!(cpu.register_a, 123);
     }
 
-    // BCS
     #[test]
     fn test_0xb0_bcs() {
         let mut cpu = CPU::new();
@@ -576,7 +583,6 @@ mod test {
         assert_eq!(cpu.register_a, 123);
     }
 
-    // BEQ
     #[test]
     fn test_0xf0_beq() {
         let mut cpu = CPU::new();
@@ -585,7 +591,14 @@ mod test {
         assert_eq!(cpu.register_x, 0x15);
     }
 
-    // BIT
+    #[test]
+    fn test_0xd0_bne() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 1, 0xd0, 3, 0xa9, 0xff, 69, 0xa2, 0x15, 0x00]);
+        assert_eq!(cpu.register_a, 1);
+        assert_eq!(cpu.register_x, 0x15);
+    }
+
     #[test]
     fn test_0x2c_bit() {
         let mut cpu = CPU::new();
@@ -634,7 +647,6 @@ mod test {
         assert_eq!(cpu.register_x, 0xff);
     }
 
-    // LDX
     #[test]
     fn test_0xa2_ldx() {
         let mut cpu = CPU::new();
@@ -642,7 +654,6 @@ mod test {
         assert_eq!(cpu.register_x, 0xee);
     }
 
-    // LDY
     #[test]
     fn test_0xa0_ldy() {
         let mut cpu = CPU::new();
@@ -650,7 +661,6 @@ mod test {
         assert_eq!(cpu.register_y, 0x12);
     }
 
-    // STA
     #[test]
     fn test_0x85_sta() {
         let mut cpu = CPU::new();
