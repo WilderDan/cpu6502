@@ -230,6 +230,12 @@ impl CPU {
         }
     }
 
+    fn bpl(&mut self) {
+        if !self.is_flag_set(StatusFlag::Negative) {
+            self.branch(&AddressingMode::Relative);
+        }
+    }
+
     fn inx(&mut self) {
         self.register_x = self.register_x.wrapping_add(1);
         self.update_zero_and_negative_flags(self.register_x);
@@ -301,6 +307,9 @@ impl CPU {
 
                 // BNE
                 0xD0 => self.bne(),
+
+                // BPL
+                0x10 => self.bpl(),
 
                 // LDA
                 0xA9 => self.lda(&instruction.mode),
@@ -595,6 +604,14 @@ mod test {
     fn test_0xd0_bne() {
         let mut cpu = CPU::new();
         cpu.load_and_run(vec![0xa9, 1, 0xd0, 3, 0xa9, 0xff, 69, 0xa2, 0x15, 0x00]);
+        assert_eq!(cpu.register_a, 1);
+        assert_eq!(cpu.register_x, 0x15);
+    }
+
+    #[test]
+    fn test_0x10_bpl() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 1, 0x10, 3, 0xa9, 0xff, 69, 0xa2, 0x15, 0x00]);
         assert_eq!(cpu.register_a, 1);
         assert_eq!(cpu.register_x, 0x15);
     }

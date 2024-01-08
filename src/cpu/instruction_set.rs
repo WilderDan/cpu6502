@@ -4,7 +4,7 @@ use instruction::Instruction;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-const INSTRUCTION_SET_SIZE: usize = 27;
+const INSTRUCTION_SET_SIZE: usize = 28;
 
 lazy_static! {
     pub static ref INSTRUCTION_SET: [Instruction; INSTRUCTION_SET_SIZE] = [
@@ -46,6 +46,9 @@ lazy_static! {
 
         // BNE - Branch if Not Equal
         Instruction::new(0xD0, "BNE", AddressingMode::Relative, 2),
+
+        // BPL - Branch if Positive
+        Instruction::new(0x10, "BPL", AddressingMode::Relative, 2),
 
         // INX - Increment X Register
         Instruction::new(0xE8, "INX", AddressingMode::Implicit, 1),
