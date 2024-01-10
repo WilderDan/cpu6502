@@ -236,6 +236,18 @@ impl CPU {
         }
     }
 
+    fn bvc(&mut self) {
+        if !self.is_flag_set(StatusFlag::Overflow) {
+            self.branch(&AddressingMode::Relative);
+        }
+    }
+
+    fn bvs(&mut self) {
+        if self.is_flag_set(StatusFlag::Overflow) {
+            self.branch(&AddressingMode::Relative);
+        }
+    }
+
     fn inx(&mut self) {
         self.register_x = self.register_x.wrapping_add(1);
         self.update_zero_and_negative_flags(self.register_x);
@@ -310,6 +322,12 @@ impl CPU {
 
                 // BPL
                 0x10 => self.bpl(),
+
+                // BVC
+                0x50 => self.bvc(),
+
+                // BVS
+                0x70 => self.bvs(),
 
                 // LDA
                 0xA9 => self.lda(&instruction.mode),
@@ -614,6 +632,21 @@ mod test {
         cpu.load_and_run(vec![0xa9, 1, 0x10, 3, 0xa9, 0xff, 69, 0xa2, 0x15, 0x00]);
         assert_eq!(cpu.register_a, 1);
         assert_eq!(cpu.register_x, 0x15);
+    }
+
+    #[test]
+    fn test_0x50_bvc() {
+        let mut cpu = CPU::new();
+        cpu.load_and_run(vec![0xa9, 69, 0x50, 3, 0xa9, 96, 0x00]);
+        assert_eq!(cpu.register_a, 69);
+    }
+
+    #[test]
+    fn test_0x70_bvs() {
+        let mut cpu = CPU::new();
+        cpu.mem_write_u16(0x1234, 0xff);
+        cpu.load_and_run(vec![0xa9, 69, 0x2c, 0x34, 0x12, 0x70, 3, 0xa9, 96, 0x00]);
+        assert_eq!(cpu.register_a, 69);
     }
 
     #[test]
